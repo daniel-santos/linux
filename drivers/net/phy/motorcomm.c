@@ -634,6 +634,16 @@ static int yt8521_read_status(struct phy_device *phydev)
 
 static int yt8521_suspend(struct phy_device *phydev)
 {
+	int ret;
+	ret = ytphy_write_ext(phydev, 0xa00d, 0x0);
+	if (ret) {
+		return ret;
+	}
+
+	ret = ytphy_write_ext(phydev, 0xa00e, 0x0);
+	if (ret) {
+		return ret;
+	}
 #if !(SYS_WAKEUP_BASED_ON_ETH_PKT)
 	int value;
 
@@ -732,12 +742,41 @@ static int yt8531_rxclk_duty_init(struct phy_device *phydev)
 	return ret;
 }
 
+#define YT8531X_RGMII_DVDDIO_1V8
 static int yt8531S_config_init(struct phy_device *phydev)
 {
-#if (YTPHY8531A_XTAL_INIT)
 	int ret = 0;
+#if (YTPHY8531A_XTAL_INIT)
 
 	ret = yt8531a_xtal_init(phydev);
+	if (ret < 0)
+		return ret;
+#endif
+
+	ret = ytphy_write_ext(phydev, 0x52, 0x231d);
+	if (ret < 0)
+		return ret;
+
+	ret = ytphy_write_ext(phydev, 0xa071, 0x9007);
+	if (ret < 0)
+		return ret;
+
+	ret = ytphy_write_ext(phydev, 0x51, 0x04a9);
+	if (ret < 0)
+		return ret;
+
+	ret = ytphy_write_ext(phydev, 0x57, 0x274c);
+	if (ret < 0)
+		return ret;
+
+	ytphy_soft_reset(phydev);
+
+#if defined (YT8531X_RGMII_DVDDIO_1V8)
+	ret = ytphy_write_ext(phydev, 0xa010, 0xabff);
+	if (ret < 0)
+		return ret;
+
+	ret = ytphy_write_ext(phydev, 0xa003, 0xf0);
 	if (ret < 0)
 		return ret;
 #endif
