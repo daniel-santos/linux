@@ -45,6 +45,17 @@
 		};
 	};
 
+	gpio-keys {
+		status = "okay";
+		compatible = "gpio-keys";
+		autorepeat;
+		usr {
+			label = "usr";
+			linux,code = <KEY_HOME>;
+			gpios = <&gpio3 RK_PD4 GPIO_ACTIVE_LOW>;
+		};
+	};
+
 	audiopwmout_diff: audiopwmout-diff {
 		status = "disabled";
 		compatible = "simple-audio-card";
