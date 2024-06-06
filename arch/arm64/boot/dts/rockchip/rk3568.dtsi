@@ -434,7 +434,7 @@
 				};
 				soc_crit: soc-crit {
 					/* millicelsius */
-					temperature = <115000>;
+					temperature = <125000>;
 					/* millicelsius */
 					hysteresis = <2000>;
 					type = "critical";
