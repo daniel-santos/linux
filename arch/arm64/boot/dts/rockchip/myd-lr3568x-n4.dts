@@ -1,0 +1,221 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2023 Rockchip Electronics Co., Ltd.
+ *
+ */
+/dts-v1/;
+
+#include "myd-lr3568x.dts"
+
+/ {
+	model = "MYIR MYD-LR3568X Board";
+	compatible = "rockchip,rk3568-evb8-lp4-v10", "rockchip,rk3568";
+
+	vcc_camera: vcc-camera-regulator {
+		compatible = "regulator-fixed";
+		gpio = <&gpio0 RK_PB0 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&camera_pwr>;
+		regulator-name = "vcc_camera";
+		enable-active-high;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	clk_n4_fixed: clock {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+		clock-output-names = "CLK_CAMERA_24MHZ";
+	};
+};
+
+&csi2_dphy_hw {
+	status = "okay";
+};
+
+&csi2_dphy0 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/delete-node/ endpoint@1;
+			/delete-node/ endpoint@2;
+			/delete-node/ endpoint@3;
+
+			mipi_in_ucam3: endpoint@4 {
+				reg = <4>;
+				remote-endpoint = <&n4_out>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/delete-node/ endpoint@0;
+
+			csi2_dphy0_out: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&mipi_csi2_input>;
+			};
+		};
+	};
+};
+
+&mipi_csi2 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi_csi2_input: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&csi2_dphy0_out>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi_csi2_output: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&cif_mipi_in0>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+	};
+};
+
+&rkcif_mipi_lvds {
+	status = "okay";
+
+	port {
+		cif_mipi_in0: endpoint {
+			remote-endpoint = <&mipi_csi2_output>;
+			data-lanes = <1 2 3 4>;
+		};
+	};
+};
+
+&rkcif_mipi_lvds_sditf {
+	status = "okay";
+
+	port {
+		mipi_lvds_sditf: endpoint {
+			remote-endpoint = <&isp1_in>;
+			data-lanes = <1 2 3 4>;
+		};
+	};
+};
+
+&i2c4 {
+	status = "okay";
+
+	/delete-node/ ov13855@36;
+	/delete-node/ ov5645@3c;
+	/delete-node/ ov5640@3c;
+
+	n4: n4@31 {
+		status = "okay";
+		compatible = "jaguar1-v4l2";
+		reg = <0x31>;
+		clocks = <&clk_n4_fixed>;
+		clock-names = "xvclk";
+		clock-frequency = <24000000>;
+		power-domains = <&power RK3568_PD_VI>;
+		pinctrl-names = "rockchip,camera_default",
+                        "rockchip,camera_sleep";
+		pinctrl-0 = <&camera_default_pins>;
+		pinctrl-1 = <&camera_sleep_pins>;
+		rst-gpios = <&gpio2 RK_PC2 GPIO_ACTIVE_HIGH>;
+		pwd-gpios = <&gpio4 RK_PC1 GPIO_ACTIVE_HIGH>;
+		rockchip,pwd-gpio = <&gpio4 RK_PC1 GPIO_ACTIVE_HIGH>;
+		rockchip,rst-gpio = <&gpio2 RK_PC2 GPIO_ACTIVE_HIGH>;
+		rockchip,camera-module-index = <0>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "jaguar1";
+		rockchip,camera-module-lens-name = "jaguar1";
+		rockchip,default_rect= <1920 1080>;
+		port {
+			n4_out: endpoint {
+				remote-endpoint = <&mipi_in_ucam3>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+	};
+};
+
+&pinctrl {
+	cam {
+		camera_pwr: camera-pwr {
+			rockchip,pins =
+				/* camera power en */
+				<0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+	camera_default_pins {
+		camera_default_pins: camera-default-pins {
+			rockchip,pins =
+				<2 RK_PC2 RK_FUNC_GPIO &pcfg_pull_up>,
+				<4 RK_PC1 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+
+	camera_sleep_pins {
+		camera_sleep_pins: camera-sleep-pins {
+			rockchip,pins =
+				<2 RK_PC2 RK_FUNC_GPIO &pcfg_pull_up>,
+				<4 RK_PC1 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+};
+
+
+&rkisp {
+	status = "okay";
+};
+
+&rkisp_mmu {
+	status = "okay";
+};
+
+/delete-node/ &rkisp_vir0;
+
+&rkisp_vir1 {
+	status = "okay";
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		isp1_in: endpoint@0 {
+			reg = <0>;
+			remote-endpoint = <&mipi_lvds_sditf>;
+		};
+	};
+};
+
+&rkcif_mmu {
+    status = "okay";
+};
+
+&rkcif {
+    status = "okay";
+};

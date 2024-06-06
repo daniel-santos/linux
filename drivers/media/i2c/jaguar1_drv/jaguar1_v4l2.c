@@ -127,11 +127,11 @@ struct jaguar1 {
 	struct i2c_client	*client;
 	struct clk		*xvclk;
 	struct gpio_desc	*rst_gpio;
-	struct gpio_desc	*rst2_gpio;
-	struct gpio_desc	*pd_gpio;
-	struct gpio_desc	*pd2_gpio;
+	// struct gpio_desc	*rst2_gpio;
+	// struct gpio_desc	*pd_gpio;
+	// struct gpio_desc	*pd2_gpio;
 	struct gpio_desc	*pwd_gpio;
-	struct gpio_desc	*pwd2_gpio;
+	// struct gpio_desc	*pwd2_gpio;
 
 	struct pinctrl		*pinctrl;
 	struct pinctrl_state	*pins_default;
@@ -341,20 +341,20 @@ static int __jaguar1_power_on(struct jaguar1 *jaguar1)
 		usleep_range(3000, 5000);
 	}
 
-	if (!IS_ERR(jaguar1->pwd2_gpio)) {
-		gpiod_direction_output(jaguar1->pwd2_gpio, 1);
-		usleep_range(3000, 5000);
-	}
+	// if (!IS_ERR(jaguar1->pwd2_gpio)) {
+	// 	gpiod_direction_output(jaguar1->pwd2_gpio, 1);
+	// 	usleep_range(3000, 5000);
+	// }
 
-	if (!IS_ERR(jaguar1->pd_gpio)) {
-		gpiod_direction_output(jaguar1->pd_gpio, 1);
-		usleep_range(1500, 2000);
-	}
+	// if (!IS_ERR(jaguar1->pd_gpio)) {
+	// 	gpiod_direction_output(jaguar1->pd_gpio, 1);
+	// 	usleep_range(1500, 2000);
+	// }
 
-	if (!IS_ERR(jaguar1->pd2_gpio)) {
-		gpiod_direction_output(jaguar1->pd2_gpio, 1);
-		usleep_range(1500, 2000);
-	}
+	// if (!IS_ERR(jaguar1->pd2_gpio)) {
+	// 	gpiod_direction_output(jaguar1->pd2_gpio, 1);
+	// 	usleep_range(1500, 2000);
+	// }
 
 	if (!IS_ERR(jaguar1->rst_gpio)) {
 		gpiod_direction_output(jaguar1->rst_gpio, 0);
@@ -362,12 +362,11 @@ static int __jaguar1_power_on(struct jaguar1 *jaguar1)
 		gpiod_direction_output(jaguar1->rst_gpio, 1);
 	}
 
-	if (!IS_ERR(jaguar1->rst2_gpio)) {
-		gpiod_direction_output(jaguar1->rst2_gpio, 0);
-		usleep_range(1500, 2000);
-		gpiod_direction_output(jaguar1->rst2_gpio, 1);
-	}
-
+	// if (!IS_ERR(jaguar1->rst2_gpio)) {
+	// 	gpiod_direction_output(jaguar1->rst2_gpio, 0);
+	// 	usleep_range(1500, 2000);
+	// 	gpiod_direction_output(jaguar1->rst2_gpio, 1);
+	// }
 	return 0;
 
 disable_clk:
@@ -383,25 +382,25 @@ static void __jaguar1_power_off(struct jaguar1 *jaguar1)
 	struct jaguar1_regulator *regulator;
 	struct device *dev = &jaguar1->client->dev;
 
-	if (!IS_ERR(jaguar1->pd_gpio))
-		gpiod_direction_output(jaguar1->pd_gpio, 0);
+	// if (!IS_ERR(jaguar1->pd_gpio))
+	// 	gpiod_direction_output(jaguar1->pd_gpio, 0);
 
-	if (!IS_ERR(jaguar1->pd2_gpio))
-		gpiod_direction_output(jaguar1->pd2_gpio, 0);
+	// if (!IS_ERR(jaguar1->pd2_gpio))
+	// 	gpiod_direction_output(jaguar1->pd2_gpio, 0);
 
 	clk_disable_unprepare(jaguar1->xvclk);
 
 	if (!IS_ERR(jaguar1->rst_gpio))
 		gpiod_direction_output(jaguar1->rst_gpio, 0);
 
-	if (!IS_ERR(jaguar1->rst2_gpio))
-		gpiod_direction_output(jaguar1->rst2_gpio, 0);
+	// if (!IS_ERR(jaguar1->rst2_gpio))
+	// 	gpiod_direction_output(jaguar1->rst2_gpio, 0);
 
 	if (!IS_ERR(jaguar1->pwd_gpio))
 		gpiod_direction_output(jaguar1->pwd_gpio, 0);
 
-	if (!IS_ERR(jaguar1->pwd2_gpio))
-		gpiod_direction_output(jaguar1->pwd2_gpio, 0);
+	// if (!IS_ERR(jaguar1->pwd2_gpio))
+	// 	gpiod_direction_output(jaguar1->pwd2_gpio, 0);
 
 	if (!IS_ERR_OR_NULL(jaguar1->pins_sleep)) {
 		ret = pinctrl_select_state(jaguar1->pinctrl,
@@ -1235,36 +1234,35 @@ static int jaguar1_analyze_dts(struct jaguar1 *jaguar1)
 			jaguar1->defrect.height);
 	}
 
-	jaguar1->pd_gpio = devm_gpiod_get(dev, "pd", GPIOD_OUT_LOW);
-	if (IS_ERR(jaguar1->pd_gpio))
-		dev_warn(dev, "can not find pd-gpios, error %ld\n",
-			 PTR_ERR(jaguar1->pd_gpio));
+	// jaguar1->pd_gpio = devm_gpiod_get(dev, "pd", GPIOD_OUT_LOW);
+	// if (IS_ERR(jaguar1->pd_gpio))
+	// 	dev_warn(dev, "can not find pd-gpios, error %ld\n",
+	// 		 PTR_ERR(jaguar1->pd_gpio));
 
-	jaguar1->pd2_gpio = devm_gpiod_get(dev, "pd2", GPIOD_OUT_LOW);
-	if (IS_ERR(jaguar1->pd2_gpio))
-		dev_warn(dev, "can not find pd2-gpios, error %ld\n",
-			 PTR_ERR(jaguar1->pd2_gpio));
+	// jaguar1->pd2_gpio = devm_gpiod_get(dev, "pd2", GPIOD_OUT_LOW);
+	// if (IS_ERR(jaguar1->pd2_gpio))
+	// 	dev_warn(dev, "can not find pd2-gpios, error %ld\n",
+	// 		 PTR_ERR(jaguar1->pd2_gpio));
 
 	jaguar1->rst_gpio = devm_gpiod_get(dev, "rst", GPIOD_OUT_LOW);
 	if (IS_ERR(jaguar1->rst_gpio))
 		dev_warn(dev, "can not find rst-gpios, error %ld\n",
 			 PTR_ERR(jaguar1->rst_gpio));
 
-	jaguar1->rst2_gpio = devm_gpiod_get(dev, "rst2", GPIOD_OUT_LOW);
-	if (IS_ERR(jaguar1->rst2_gpio))
-		dev_warn(dev, "can not find rst2-gpios, error %ld\n",
-			 PTR_ERR(jaguar1->rst2_gpio));
+	// jaguar1->rst2_gpio = devm_gpiod_get(dev, "rst2", GPIOD_OUT_LOW);
+	// if (IS_ERR(jaguar1->rst2_gpio))
+	// 	dev_warn(dev, "can not find rst2-gpios, error %ld\n",
+	// 		 PTR_ERR(jaguar1->rst2_gpio));
 
 	jaguar1->pwd_gpio = devm_gpiod_get(dev, "pwd", GPIOD_OUT_HIGH);
 	if (IS_ERR(jaguar1->pwd_gpio))
 		dev_warn(dev, "can not find pwd-gpios, error %ld\n",
 			 PTR_ERR(jaguar1->pwd_gpio));
 
-	jaguar1->pwd2_gpio = devm_gpiod_get(dev, "pwd2", GPIOD_OUT_HIGH);
-	if (IS_ERR(jaguar1->pwd2_gpio))
-		dev_warn(dev, "can not find pwd2-gpios, error %ld\n",
-			 PTR_ERR(jaguar1->pwd2_gpio));
-
+	// jaguar1->pwd2_gpio = devm_gpiod_get(dev, "pwd2", GPIOD_OUT_HIGH);
+	// if (IS_ERR(jaguar1->pwd2_gpio))
+	// 	dev_warn(dev, "can not find pwd2-gpios, error %ld\n",
+	// 		 PTR_ERR(jaguar1->pwd2_gpio));
 	return 0;
 }
 

@@ -80,7 +80,7 @@
 static int chip_id[4];
 static int rev_id[4];
 static int jaguar1_cnt;
-unsigned int jaguar1_i2c_addr[4] = {0x60, 0x62, 0x64, 0x66};
+unsigned int jaguar1_i2c_addr[4] = {0x62, 0x62, 0x62, 0x62};
 unsigned int jaguar1_mclk = 0; //0:756 1:594 2:378 3:1242
 module_param_named(jaguar1_mclk, jaguar1_mclk, uint, S_IRUGO);
 unsigned int jaguar1_lane = 4; //2 or 4
@@ -99,7 +99,7 @@ struct semaphore jaguar1_lock;
 struct i2c_client* jaguar1_client;
 static struct i2c_board_info hi_info =
 {
-	I2C_BOARD_INFO("jaguar1", 0x60),
+	I2C_BOARD_INFO("jaguar1", 0x62),
 };
 decoder_get_information_str decoder_inform;
 
@@ -108,20 +108,20 @@ module_param(acp_mode_enable, uint, S_IRUGO);
 
 static void vd_pattern_enable(void)
 {
-	gpio_i2c_write(0x60, 0xFF, 0x00);
-	gpio_i2c_write(0x60, 0x1C, 0x1A);
-	gpio_i2c_write(0x60, 0x1D, 0x1A);
-	gpio_i2c_write(0x60, 0x1E, 0x1A);
-	gpio_i2c_write(0x60, 0x1F, 0x1A);
+	gpio_i2c_write(0x62, 0xFF, 0x00);
+	gpio_i2c_write(0x62, 0x1C, 0x1A);
+	gpio_i2c_write(0x62, 0x1D, 0x1A);
+	gpio_i2c_write(0x62, 0x1E, 0x1A);
+	gpio_i2c_write(0x62, 0x1F, 0x1A);
 
-	gpio_i2c_write(0x60, 0xFF, 0x05);
-	gpio_i2c_write(0x60, 0x6A, 0x80);
-	gpio_i2c_write(0x60, 0xFF, 0x06);
-	gpio_i2c_write(0x60, 0x6A, 0x80);
-	gpio_i2c_write(0x60, 0xFF, 0x07);
-	gpio_i2c_write(0x60, 0x6A, 0x80);
-	gpio_i2c_write(0x60, 0xFF, 0x08);
-	gpio_i2c_write(0x60, 0x6A, 0x80);
+	gpio_i2c_write(0x62, 0xFF, 0x05);
+	gpio_i2c_write(0x62, 0x6A, 0x80);
+	gpio_i2c_write(0x62, 0xFF, 0x06);
+	gpio_i2c_write(0x62, 0x6A, 0x80);
+	gpio_i2c_write(0x62, 0xFF, 0x07);
+	gpio_i2c_write(0x62, 0x6A, 0x80);
+	gpio_i2c_write(0x62, 0xFF, 0x08);
+	gpio_i2c_write(0x62, 0x6A, 0x80);
 }
 
 /*******************************************************************************
@@ -183,7 +183,7 @@ static void vd_set_all(video_init_all *param)
 	int i, dev_num=0;
 	video_input_init  video_val[4];
 
-#if 0
+#if 1
 	for(i=0 ; i<4 ; i++)
 	{
 		printk("[DRV || %s] ch%d / fmt:%d / input:%d / interface:%d\n",__func__
@@ -717,12 +717,12 @@ void jaguar1_stop(void)
 
 	down(&jaguar1_lock);
 	arb_disable(0);
-	gpio_i2c_write(0x60, 0xff, 0x20);
+	gpio_i2c_write(0x62, 0xff, 0x20);
 
 	// ARB RESET High
-	gpio_i2c_write(0x60, 0x40, 0x11);
+	gpio_i2c_write(0x62, 0x40, 0x11);
 	usleep_range(3000, 5000);
-	gpio_i2c_write(0x60, 0x40, 0x00);
+	gpio_i2c_write(0x62, 0x40, 0x00);
 	vd_jaguar1_sw_reset(&video_val);
 	up(&jaguar1_lock);
 }
