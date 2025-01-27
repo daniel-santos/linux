@@ -10,10 +10,10 @@
 #include <dt-bindings/pinctrl/rockchip.h>
 #include <dt-bindings/display/media-bus-format.h>
 #include "rk3568.dtsi"
-#include "rk3568-evb.dtsi"
+#include "myd-lr3568x-base.dtsi"
 
 / {
-	model = "Rockchip RK3568 EVB1 DDR4 V10 Board";
+	model = "MYIR MYD-LR3568X Board";
 	compatible = "rockchip,rk3568-evb1-ddr4-v10", "rockchip,rk3568";
 
 	vcc2v5_sys: vcc2v5-ddr {
@@ -25,16 +25,6 @@
 		regulator-max-microvolt = <2500000>;
 		vin-supply = <&vcc3v3_sys>;
 	};
-
-	/*vcc3v3_vga: vcc3v3-vga {
-		compatible = "regulator-fixed";
-		regulator-name = "vcc3v3_vga";
-		regulator-always-on;
-		regulator-boot-on;
-		gpio = <&gpio0 RK_PD5 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-		vin-supply = <&vcc3v3_sys>;
-	};*/
 
 	pcie30_avdd0v9: pcie30-avdd0v9 {
 		compatible = "regulator-fixed";
@@ -96,6 +86,13 @@
 	};
 
 	clk_ov5645_fixed: clock {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+		clock-output-names = "CLK_CAMERA_24MHZ";
+	};
+
+	clk_ov13855_fixed: clock {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <24000000>;
@@ -192,29 +189,19 @@
 			reg = <0>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-/*
+
 			mipi_in_ucam0: endpoint@1 {
 				reg = <1>;
-				remote-endpoint = <&ucam_out0>;
+				remote-endpoint = <&ov13855_out>;
 				data-lanes = <1 2 3 4>;
 			};
 			mipi_in_ucam1: endpoint@2 {
 				reg = <2>;
-				remote-endpoint = <&gc8034_out>;
-				data-lanes = <1 2 3 4>;
-			};
-			mipi_in_ucam2: endpoint@3 {
-				reg = <3>;
-				remote-endpoint = <&ov5695_out>;
-				data-lanes = <1 2>;
-			};*/
-			mipi_in_ucam0: endpoint@1 {
-				reg = <1>;
 				remote-endpoint = <&ov5645_out>;
 				data-lanes = <1 2>;
 			};
-			mipi_in_ucam1: endpoint@2 {
-				reg = <2>;
+			mipi_in_ucam2: endpoint@3 {
+				reg = <3>;
 				remote-endpoint = <&ov5640_out>;
 				data-lanes = <1 2>;
 			};
@@ -272,13 +259,6 @@
 &dsi0_in_vp1 {
 	status = "disabled";
 };
-
-&dsi0_panel {
-	power-supply = <&vcc3v3_lcd0_n>;
-	status = "disabled";
-};
-
-
 
 &edp {
 	hpd-gpios = <&gpio4 RK_PC4 GPIO_ACTIVE_HIGH>;
@@ -362,74 +342,30 @@
 
 &i2c4 {
 	status = "okay";
-/*	gc8034: gc8034@37 {
-		compatible = "galaxycore,gc8034";
+
+	ov13855: ov13855@36 {
 		status = "okay";
-		reg = <0x37>;
-		clocks = <&cru CLK_CIF_OUT>;
-		clock-names = "xvclk";
-		pinctrl-names = "default";
-		pinctrl-0 = <&cif_clk>;
-		power-domains = <&power RK3568_PD_VI>;
-		reset-gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>;
-		pwdn-gpios = <&gpio4 RK_PB4 GPIO_ACTIVE_LOW>;
-		rockchip,grf = <&grf>;
-		rockchip,camera-module-index = <0>;
-		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "RK-CMK-8M-2-v1";
-		rockchip,camera-module-lens-name = "CK8401";
-		port {
-			gc8034_out: endpoint {
-				remote-endpoint = <&mipi_in_ucam1>;
-				data-lanes = <1 2 3 4>;
-			};
-		};
-	};
-	os04a10: os04a10@36 {
-		compatible = "ovti,os04a10";
+		compatible = "ovti,ov13855";
 		reg = <0x36>;
-		clocks = <&cru CLK_CIF_OUT>;
+		clocks = <&clk_ov13855_fixed>;
 		clock-names = "xvclk";
+		clock-frequency = <24000000>;
 		power-domains = <&power RK3568_PD_VI>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&cif_clk>;
-		reset-gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>;
-		pwdn-gpios = <&gpio4 RK_PB4 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio2 RK_PC2 GPIO_ACTIVE_HIGH>;
+		pwdn-gpios = <&gpio4 RK_PC1 GPIO_ACTIVE_HIGH>;
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "CMK-OT1607-FV1";
-		rockchip,camera-module-lens-name = "M12-40IRC-4MP-F16";
+		rockchip,camera-module-name = "NC";
+		rockchip,camera-module-lens-name = "NC";
+
 		port {
-			ucam_out0: endpoint {
+			ov13855_out: endpoint {
 				remote-endpoint = <&mipi_in_ucam0>;
 				data-lanes = <1 2 3 4>;
 			};
 		};
 	};
 
-	ov5695: ov5695@36 {
-		status = "okay";
-		compatible = "ovti,ov5695";
-		reg = <0x36>;
-		clocks = <&cru CLK_CIF_OUT>;
-		clock-names = "xvclk";
-		power-domains = <&power RK3568_PD_VI>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&cif_clk>;
-		reset-gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_HIGH>;
-		pwdn-gpios = <&gpio4 RK_PB4 GPIO_ACTIVE_HIGH>;
-		rockchip,camera-module-index = <0>;
-		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "TongJu";
-		rockchip,camera-module-lens-name = "CHT842-MD";
-		port {
-			ov5695_out: endpoint {
-				remote-endpoint = <&mipi_in_ucam2>;
-				data-lanes = <1 2>;
-			};
-		};
-	};
-*/
 	ov5645: ov5645@3c {
 		status = "okay";
 		compatible = "ovti,ov5645";
@@ -447,7 +383,7 @@
 
 		port {
 			ov5645_out: endpoint {
-				remote-endpoint = <&mipi_in_ucam0>;
+				remote-endpoint = <&mipi_in_ucam1>;
 				data-lanes = <1 2>;
 			};
 		};
@@ -470,7 +406,7 @@
 
 		port {
 			ov5640_out: endpoint {
-				remote-endpoint = <&mipi_in_ucam1>;
+				remote-endpoint = <&mipi_in_ucam2>;
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
 			};
@@ -647,12 +583,6 @@
 	status = "okay";
 };
 
-&spdif_8ch {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&spdifm1_tx>;
-};
-
 &uart0 {
 	status = "okay";
 	pinctrl-names = "default";
@@ -722,16 +652,6 @@
 	enable-active-high;
 	status = "disabled";
 };
-
-/*&wireless_wlan {
-	compatible = "wlan-platdata";
-	rockchip,grf = <&grf>;
-	wifi_chip_type = "ap6256";
-	pinctrl-names = "default";
-	pinctrl-0 = <&wifi_host_wake_irq>;
-	WIFI,host_wake_irq = <&gpio0 RK_PD4 GPIO_ACTIVE_HIGH>;
-	status = "okay";
-};*/
 
 &wireless_bluetooth {
 	compatible = "bluetooth-platdata";

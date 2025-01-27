@@ -206,7 +206,7 @@ static const struct regval ov13855_global_regs[] = {
 	{0x3682, 0x50},
 	{0x3683, 0xa9},
 	{0x3684, 0xa9},
-	{0x3709, 0x5f},
+	// {0x3709, 0x68},
 	{0x3714, 0x24},
 	{0x371a, 0x3e},
 	{0x3737, 0x04},
@@ -229,7 +229,7 @@ static const struct regval ov13855_global_regs[] = {
 	{0x37e1, 0x0a},
 	{0x37e2, 0x14},
 	{0x37e3, 0x04},
-	{0x37e4, 0x2a},
+	// {0x37e4, 0x34},
 	{0x37e5, 0x03},
 	{0x37e6, 0x04},
 	{0x3800, 0x00},
@@ -724,9 +724,9 @@ static const struct regval ov13855_4224x3136_30fps_regs[] = {
 	{0x3501, 0x80},
 	{0x3502, 0x00},
 	{0x3508, 0x02},
-	{0x3509, 0x00},
-	{0x350a, 0x00},
-	{0x350e, 0x00},
+	{0x3509, 0x80},
+	{0x350a, 0x04},
+	{0x350e, 0x04},
 	{0x3510, 0x00},
 	{0x3511, 0x02},
 	{0x3512, 0x00},
@@ -757,7 +757,7 @@ static const struct regval ov13855_4224x3136_30fps_regs[] = {
 	{0x3683, 0xa9},
 	{0x3684, 0xa9},
 	{0x3706, 0x40},
-	{0x3709, 0x5f},
+	// {0x3709, 0x68},
 	{0x3714, 0x24},
 	{0x371a, 0x3e},
 	{0x3737, 0x04},
@@ -780,7 +780,7 @@ static const struct regval ov13855_4224x3136_30fps_regs[] = {
 	{0x37e1, 0x0a},
 	{0x37e2, 0x14},
 	{0x37e3, 0x04},
-	{0x37e4, 0x2A},
+	// {0x37e4, 0x34},
 	{0x37e5, 0x03},
 	{0x37e6, 0x04},
 	{0x3800, 0x00},
@@ -869,6 +869,12 @@ static const struct regval ov13855_4224x3136_30fps_regs[] = {
 	{0x5042, 0x10},
 	{0x5043, 0x84},
 	{0x5044, 0x62},
+	{0x5100, 0x40},
+	{0x5101, 0x00},
+	{0x5102, 0x20},
+	{0x5103, 0x00},
+	{0x5104, 0x40},
+	{0x5105, 0x00},
 	{0x5180, 0x00},
 	{0x5181, 0x10},
 	{0x5182, 0x02},
@@ -1437,10 +1443,10 @@ static int __ov13855_power_on(struct ov13855 *ov13855)
 	int ret;
 	u32 delay_us;
 	struct device *dev = &ov13855->client->dev;
-
+# if 0
 	if (!IS_ERR(ov13855->power_gpio))
 		gpiod_set_value_cansleep(ov13855->power_gpio, 1);
-
+#endif
 	usleep_range(1000, 2000);
 
 	if (!IS_ERR_OR_NULL(ov13855->pins_default)) {
@@ -1504,9 +1510,10 @@ static void __ov13855_power_off(struct ov13855 *ov13855)
 		if (ret < 0)
 			dev_dbg(dev, "could not set pins\n");
 	}
+#if 0
 	if (!IS_ERR(ov13855->power_gpio))
 		gpiod_set_value_cansleep(ov13855->power_gpio, 0);
-
+#endif
 	regulator_bulk_disable(OV13855_NUM_SUPPLIES, ov13855->supplies);
 }
 
@@ -1862,11 +1869,11 @@ static int ov13855_probe(struct i2c_client *client,
 		dev_err(dev, "Failed to get xvclk\n");
 		return -EINVAL;
 	}
-
+#if 0
 	ov13855->power_gpio = devm_gpiod_get(dev, "power", GPIOD_OUT_LOW);
 	if (IS_ERR(ov13855->power_gpio))
 		dev_warn(dev, "Failed to get power-gpios, maybe no use\n");
-
+#endif
 	ov13855->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(ov13855->reset_gpio))
 		dev_warn(dev, "Failed to get reset-gpios\n");

@@ -471,6 +471,16 @@ static int yt8521_config_init(struct phy_device *phydev)
 	if (ret < 0)
 		return ret;
 
+	ret = ytphy_write_ext(phydev, 0xa00d, 0x2600);
+	if (ret) {
+		return ret;
+	}
+
+	ret = ytphy_write_ext(phydev, 0xa00e, 0x1870);
+	if (ret) {
+		return ret;
+	}
+
 	netdev_info(phydev->attached_dev, "%s done, phy addr: %d, strap mode = %d, polling mode = %d\n",
 		    __func__, phydev->mdio.addr, hw_strap_mode, yt8521_hw_strap_polling(phydev));
 

@@ -445,6 +445,7 @@ static void lt9611_enable_hpd_interrupts(struct lt9611 *lt9611)
 
 static void lt9611_sleep_setup(struct lt9611 *lt9611)
 {
+#if 0
 	const struct reg_sequence sleep_setup[] = {
 		{ 0x8024, 0x76 },
 		{ 0x8023, 0x01 },
@@ -460,6 +461,7 @@ static void lt9611_sleep_setup(struct lt9611 *lt9611)
 	regmap_multi_reg_write(lt9611->regmap,
 			       sleep_setup, ARRAY_SIZE(sleep_setup));
 	lt9611->sleep = true;
+#endif
 }
 
 static int lt9611_power_on(struct lt9611 *lt9611)
@@ -779,8 +781,9 @@ static struct mipi_dsi_device *lt9611_attach_dsi(struct lt9611 *lt9611,
 
 	dsi->lanes = 4;
 	dsi->format = MIPI_DSI_FMT_RGB888;
-	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
-			  MIPI_DSI_MODE_VIDEO_HSE;
+	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST |
+			  MIPI_DSI_MODE_VIDEO_HBP | MIPI_DSI_MODE_LPM |
+			  MIPI_DSI_MODE_EOT_PACKET;
 
 	ret = mipi_dsi_attach(dsi);
 	if (ret < 0) {
@@ -842,28 +845,7 @@ static int lt9611_bridge_attach(struct drm_bridge *bridge,
 			return ret;
 	}
 
-	/* Attach primary DSI */
-	lt9611->dsi0 = lt9611_attach_dsi(lt9611, lt9611->dsi0_node);
-	if (IS_ERR(lt9611->dsi0))
-		return PTR_ERR(lt9611->dsi0);
-
-	/* Attach secondary DSI, if specified */
-	if (lt9611->dsi1_node) {
-		lt9611->dsi1 = lt9611_attach_dsi(lt9611, lt9611->dsi1_node);
-		if (IS_ERR(lt9611->dsi1)) {
-			ret = PTR_ERR(lt9611->dsi1);
-			goto err_unregister_dsi0;
-		}
-	}
-
 	return 0;
-
-err_unregister_dsi0:
-	lt9611_bridge_detach(bridge);
-	drm_connector_cleanup(&lt9611->connector);
-	mipi_dsi_device_unregister(lt9611->dsi0);
-
-	return ret;
 }
 
 static enum drm_mode_status lt9611_bridge_mode_valid(struct drm_bridge *bridge,
@@ -1192,6 +1174,18 @@ static int lt9611_probe(struct i2c_client *client,
 
 	drm_bridge_add(&lt9611->bridge);
 
+	/* Attach primary DSI */
+	lt9611->dsi0 = lt9611_attach_dsi(lt9611, lt9611->dsi0_node);
+	if (IS_ERR(lt9611->dsi0))
+		return PTR_ERR(lt9611->dsi0);
+
+	/* Attach secondary DSI, if specified */
+	if (lt9611->dsi1_node) {
+		lt9611->dsi1 = lt9611_attach_dsi(lt9611, lt9611->dsi1_node);
+		if (IS_ERR(lt9611->dsi1)) {
+			ret = PTR_ERR(lt9611->dsi1);
+		}
+	}
 	lt9611_enable_hpd_interrupts(lt9611);
 
 	return lt9611_audio_init(dev, lt9611);

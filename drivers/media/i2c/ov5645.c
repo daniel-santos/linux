@@ -33,6 +33,8 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
+#include <linux/rk-camera-module.h>
+
 
 #define OV5645_SYSTEM_CTRL0		0x3008
 #define		OV5645_SYSTEM_CTRL0_START	0x02
@@ -79,6 +81,7 @@ struct ov5645_mode_info {
 	u32 width;
 	u32 height;
 	const struct reg_value *data;
+	struct v4l2_fract max_fps;
 	u32 data_size;
 	u32 pixel_clock;
 	u32 link_freq;
@@ -112,12 +115,26 @@ struct ov5645 {
 
 	struct gpio_desc *enable_gpio;
 	struct gpio_desc *rst_gpio;
+
+	u32         module_index;
+	const char      *module_facing;
+	const char      *module_name;
+	const char      *len_name;
+	u32 lane_data_num;
 };
 
 static inline struct ov5645 *to_ov5645(struct v4l2_subdev *sd)
 {
 	return container_of(sd, struct ov5645, sd);
 }
+
+static const struct reg_value ov5645_check_aec[] = {
+	{ 0x3500, 0x00 },
+	{ 0x3501, 0x3f },
+	{ 0x3502, 0x00 },
+	{ 0x350a, 0x00 },
+	{ 0x350b, 0x12 }
+};
 
 static const struct reg_value ov5645_global_init_setting[] = {
 	{ 0x3103, 0x11 },
@@ -134,10 +151,10 @@ static const struct reg_value ov5645_global_init_setting[] = {
 	{ 0x3108, 0x01 },
 	{ 0x3611, 0x06 },
 	{ 0x3500, 0x00 },
-	{ 0x3501, 0x01 },
+	{ 0x3501, 0x3f },
 	{ 0x3502, 0x00 },
 	{ 0x350a, 0x00 },
-	{ 0x350b, 0x3f },
+	{ 0x350b, 0x12 },
 	{ 0x3620, 0x33 },
 	{ 0x3621, 0xe0 },
 	{ 0x3622, 0x01 },
@@ -206,7 +223,7 @@ static const struct reg_value ov5645_global_init_setting[] = {
 	{ 0x5a21, 0x00 },
 	{ 0x5a24, 0x00 },
 	{ 0x3008, 0x02 },
-	{ 0x3503, 0x00 },
+	{ 0x3503, 0x07 },
 	{ 0x5180, 0xff },
 	{ 0x5181, 0xf2 },
 	{ 0x5182, 0x00 },
@@ -226,9 +243,9 @@ static const struct reg_value ov5645_global_init_setting[] = {
 	{ 0x5190, 0x42 },
 	{ 0x5191, 0xf8 },
 	{ 0x5192, 0x04 },
-	{ 0x5193, 0x70 },
-	{ 0x5194, 0xf0 },
-	{ 0x5195, 0xf0 },
+	{ 0x5193, 0xfd },
+	{ 0x5194, 0xa7 },
+	{ 0x5195, 0xfc },
 	{ 0x5196, 0x03 },
 	{ 0x5197, 0x01 },
 	{ 0x5198, 0x04 },
@@ -518,6 +535,10 @@ static const struct ov5645_mode_info ov5645_mode_info_data[] = {
 	{
 		.width = 1280,
 		.height = 960,
+		.max_fps = {
+            .numerator = 10000,
+            .denominator = 300000,
+        },
 		.data = ov5645_setting_sxga,
 		.data_size = ARRAY_SIZE(ov5645_setting_sxga),
 		.pixel_clock = 112000000,
@@ -526,6 +547,10 @@ static const struct ov5645_mode_info ov5645_mode_info_data[] = {
 	{
 		.width = 1920,
 		.height = 1080,
+		.max_fps = {
+            .numerator = 10000,
+            .denominator = 300000,
+        },
 		.data = ov5645_setting_1080p,
 		.data_size = ARRAY_SIZE(ov5645_setting_1080p),
 		.pixel_clock = 168000000,
@@ -534,6 +559,10 @@ static const struct ov5645_mode_info ov5645_mode_info_data[] = {
 	{
 		.width = 2592,
 		.height = 1944,
+		.max_fps = {
+            .numerator = 10000,
+            .denominator = 300000,
+        },
 		.data = ov5645_setting_full,
 		.data_size = ARRAY_SIZE(ov5645_setting_full),
 		.pixel_clock = 168000000,
@@ -625,11 +654,24 @@ static int ov5645_set_register_array(struct ov5645 *ov5645,
 {
 	unsigned int i;
 	int ret;
+	u8 tmp;
 
 	for (i = 0; i < num_settings; ++i, ++settings) {
 		ret = ov5645_write_reg(ov5645, settings->reg, settings->val);
 		if (ret < 0)
 			return ret;
+		if (settings->reg == OV5645_SYSTEM_CTRL0)
+			usleep_range(10000, 15000);
+		if ((settings->reg >= 0x3500) && (settings->reg <= 0x350b)) {	//AEC
+			do {
+				ov5645_read_reg(ov5645, settings->reg, &tmp);
+				if (tmp != settings->val) 
+					usleep_range(5000, 10000);
+				else
+					break;
+				ov5645_write_reg(ov5645, settings->reg, settings->val);
+			}while (1);
+		}
 	}
 
 	return 0;
@@ -638,17 +680,18 @@ static int ov5645_set_register_array(struct ov5645 *ov5645,
 static int ov5645_set_power_on(struct ov5645 *ov5645)
 {
 	int ret;
-
+/*
 	ret = regulator_bulk_enable(OV5645_NUM_SUPPLIES, ov5645->supplies);
 	if (ret < 0)
 		return ret;
+ */
 
 	ret = clk_prepare_enable(ov5645->xclk);
 	if (ret < 0) {
 		dev_err(ov5645->dev, "clk prepare enable failed\n");
-		regulator_bulk_disable(OV5645_NUM_SUPPLIES, ov5645->supplies);
+//		regulator_bulk_disable(OV5645_NUM_SUPPLIES, ov5645->supplies);
 		return ret;
-	}
+	} 
 
 	usleep_range(5000, 15000);
 	gpiod_set_value_cansleep(ov5645->enable_gpio, 1);
@@ -666,7 +709,7 @@ static void ov5645_set_power_off(struct ov5645 *ov5645)
 	gpiod_set_value_cansleep(ov5645->rst_gpio, 1);
 	gpiod_set_value_cansleep(ov5645->enable_gpio, 0);
 	clk_disable_unprepare(ov5645->xclk);
-	regulator_bulk_disable(OV5645_NUM_SUPPLIES, ov5645->supplies);
+	//regulator_bulk_disable(OV5645_NUM_SUPPLIES, ov5645->supplies);
 }
 
 static int ov5645_s_power(struct v4l2_subdev *sd, int on)
@@ -696,6 +739,17 @@ static int ov5645_s_power(struct v4l2_subdev *sd, int on)
 			}
 
 			usleep_range(500, 1000);
+
+			ret = ov5645_set_register_array(ov5645,
+					ov5645_check_aec,
+					ARRAY_SIZE(ov5645_check_aec));
+			if (ret < 0) {
+				dev_err(ov5645->dev,
+					"could not set init registers\n");
+				ov5645_set_power_off(ov5645);
+				goto exit;
+			}
+
 		} else {
 			ov5645_write_reg(ov5645, OV5645_IO_MIPI_CTRL00, 0x58);
 			ov5645_set_power_off(ov5645);
@@ -866,6 +920,21 @@ static int ov5645_enum_frame_size(struct v4l2_subdev *subdev,
 	return 0;
 }
 
+static int ov5645_enum_frame_interval(struct v4l2_subdev *sd,
+                       struct v4l2_subdev_pad_config *cfg,
+                       struct v4l2_subdev_frame_interval_enum *fie)
+{
+    if (fie->index >= ARRAY_SIZE(ov5645_mode_info_data))
+        return -EINVAL;
+    fie->code = MEDIA_BUS_FMT_UYVY8_2X8;
+    fie->width = ov5645_mode_info_data[fie->index].width;
+    fie->height = ov5645_mode_info_data[fie->index].height;
+    fie->interval = ov5645_mode_info_data[fie->index].max_fps;
+	fie->reserved[0] = NO_HDR;
+    return 0;
+}
+
+
 static struct v4l2_mbus_framefmt *
 __ov5645_get_pad_format(struct ov5645 *ov5645,
 			struct v4l2_subdev_pad_config *cfg,
@@ -1026,18 +1095,142 @@ static int ov5645_s_stream(struct v4l2_subdev *subdev, int enable)
 	return 0;
 }
 
+static int ov5645_g_frame_interval(struct v4l2_subdev *sd,
+                   struct v4l2_subdev_frame_interval *fi)
+{
+    struct ov5645 *ov5645 = to_ov5645(sd);
+    const struct ov5645_mode_info *mode = ov5645->current_mode;
+
+    fi->interval = mode->max_fps;
+
+    return 0;
+}
+
+static long ov5645_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
+{
+	struct rkmodule_inf *inf = (struct rkmodule_inf *)arg;
+	struct rkmodule_channel_info *ch_info;
+	struct ov5645 *ov5645 = to_ov5645(sd);
+	u32 stream;
+	switch (cmd) {
+		case RKMODULE_GET_MODULE_INFO:
+			memset(inf, 0, sizeof(*inf));
+			strlcpy(inf->base.sensor, "ov5645", sizeof(inf->base.sensor));
+			strlcpy(inf->base.module, ov5645->module_name,
+					sizeof(inf->base.module));
+			strlcpy(inf->base.lens, ov5645->len_name, sizeof(inf->base.lens));
+
+			break;
+		case RKMODULE_GET_CHANNEL_INFO:
+			ch_info = (struct rkmodule_channel_info *)arg;
+			ch_info->vc = V4L2_MBUS_CSI2_CHANNEL_0;
+			ch_info->width = ov5645->current_mode->width;
+			ch_info->height = ov5645->current_mode->height;
+			ch_info->bus_fmt = MEDIA_BUS_FMT_UYVY8_2X8;
+			break;
+
+		case RKMODULE_SET_QUICK_STREAM:
+            stream = *((u32 *)arg);
+            if (stream) {
+				ov5645_set_register_array(ov5645,
+						ov5645->current_mode->data,
+						ov5645->current_mode->data_size);
+				usleep_range(10000, 15000);
+				//ov5645_write_reg(ov5645, 0x350b, 0x12);
+				ov5645_set_register_array(ov5645, ov5645_check_aec, ARRAY_SIZE(ov5645_check_aec));
+				usleep_range(10000, 15000);
+
+                ov5645_write_reg(ov5645, OV5645_IO_MIPI_CTRL00, 0x45);
+                ov5645_write_reg(ov5645, OV5645_SYSTEM_CTRL0,
+                        OV5645_SYSTEM_CTRL0_START);
+            } else {
+                ov5645_write_reg(ov5645, OV5645_IO_MIPI_CTRL00, 0x40);
+                ov5645_write_reg(ov5645, OV5645_SYSTEM_CTRL0,
+                        OV5645_SYSTEM_CTRL0_STOP);
+            }
+
+            break;
+        default:
+            return -ENOIOCTLCMD;
+            break;
+	}
+	return 0;
+}
+
+
+#ifdef CONFIG_COMPAT
+static long ov5645_compat_ioctl32(struct v4l2_subdev *sd,
+                   unsigned int cmd, unsigned long arg)
+{
+	void __user *up = compat_ptr(arg);
+	struct rkmodule_inf *inf;
+	struct rkmodule_channel_info *ch_info;
+	u32  stream;
+	long ret = -ENOIOCTLCMD;
+
+	switch (cmd) {
+		case RKMODULE_GET_MODULE_INFO:
+			inf = kzalloc(sizeof(*inf), GFP_KERNEL);
+			if (!inf) {
+				ret = -ENOMEM;
+				return ret;
+			}
+
+			ret = ov5645_ioctl(sd, cmd, inf);
+			if (!ret)
+				ret = copy_to_user(up, inf, sizeof(*inf));
+			if (ret)
+				ret = -EFAULT;
+			kfree(inf);
+			return 0;
+			break;
+		case RKMODULE_GET_CHANNEL_INFO:
+			ch_info = kzalloc(sizeof(*ch_info), GFP_KERNEL);
+			if (!ch_info) {
+				ret = -ENOMEM;
+				return ret;
+			}
+			ret = ov5645_ioctl(sd, cmd, ch_info);
+			if (!ret) {
+				ret = copy_to_user(up, ch_info, sizeof(*ch_info));
+				if (ret)
+					ret = -EFAULT;
+			}
+			kfree(ch_info);
+			break;
+		case RKMODULE_SET_QUICK_STREAM:
+            ret = copy_from_user(&stream, up, sizeof(u32));
+            if (!ret)
+                ret = ov5645_ioctl(sd, cmd, &stream);
+            break;
+        default:
+            ret = -ENOIOCTLCMD;
+            break;
+	}
+	return ret;
+
+}
+#endif
+
 static const struct v4l2_subdev_core_ops ov5645_core_ops = {
 	.s_power = ov5645_s_power,
+	    .ioctl = ov5645_ioctl,
+#ifdef CONFIG_COMPAT
+    .compat_ioctl32 = ov5645_compat_ioctl32,
+#endif
+
 };
 
 static const struct v4l2_subdev_video_ops ov5645_video_ops = {
 	.s_stream = ov5645_s_stream,
+	.g_frame_interval = ov5645_g_frame_interval,
 };
 
 static const struct v4l2_subdev_pad_ops ov5645_subdev_pad_ops = {
 	.init_cfg = ov5645_entity_init_cfg,
 	.enum_mbus_code = ov5645_enum_mbus_code,
 	.enum_frame_size = ov5645_enum_frame_size,
+	.enum_frame_interval = ov5645_enum_frame_interval,
 	.get_fmt = ov5645_get_format,
 	.set_fmt = ov5645_set_format,
 	.get_selection = ov5645_get_selection,
@@ -1052,12 +1245,13 @@ static const struct v4l2_subdev_ops ov5645_subdev_ops = {
 static int ov5645_probe(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
+	struct device_node *node = dev->of_node;
 	struct device_node *endpoint;
 	struct ov5645 *ov5645;
 	u8 chip_id_high, chip_id_low;
-	unsigned int i;
 	u32 xclk_freq;
 	int ret;
+	char facing[2];
 
 	ov5645 = devm_kzalloc(dev, sizeof(struct ov5645), GFP_KERNEL);
 	if (!ov5645)
@@ -1065,6 +1259,19 @@ static int ov5645_probe(struct i2c_client *client)
 
 	ov5645->i2c_client = client;
 	ov5645->dev = dev;
+
+	ret = of_property_read_u32(node, RKMODULE_CAMERA_MODULE_INDEX,
+                   &ov5645->module_index);
+    ret |= of_property_read_string(node, RKMODULE_CAMERA_MODULE_FACING,
+                       &ov5645->module_facing);
+    ret |= of_property_read_string(node, RKMODULE_CAMERA_MODULE_NAME,
+                       &ov5645->module_name);
+    ret |= of_property_read_string(node, RKMODULE_CAMERA_LENS_NAME,
+                       &ov5645->len_name);
+    if (ret) {
+        dev_err(dev, "could not get module information!\n");
+        return -EINVAL;
+    }
 
 	endpoint = of_graph_get_next_endpoint(dev->of_node, NULL);
 	if (!endpoint) {
@@ -1113,13 +1320,15 @@ static int ov5645_probe(struct i2c_client *client)
 		return ret;
 	}
 
+	/*
 	for (i = 0; i < OV5645_NUM_SUPPLIES; i++)
 		ov5645->supplies[i].supply = ov5645_supply_name[i];
 
 	ret = devm_regulator_bulk_get(dev, OV5645_NUM_SUPPLIES,
-				      ov5645->supplies);
+				      ov5645->supplies); 
 	if (ret < 0)
 		return ret;
+		*/
 
 	ov5645->enable_gpio = devm_gpiod_get(dev, "enable", GPIOD_OUT_HIGH);
 	if (IS_ERR(ov5645->enable_gpio)) {
@@ -1233,11 +1442,29 @@ static int ov5645_probe(struct i2c_client *client)
 
 	ov5645_s_power(&ov5645->sd, false);
 
+
+	memset(facing, 0, sizeof(facing));
+    if (strcmp(ov5645->module_facing, "back") == 0)
+        facing[0] = 'b';
+    else
+        facing[0] = 'f';
+
+    snprintf(ov5645->sd.name, sizeof(ov5645->sd.name), "m%02d_%s_%s %s",
+         ov5645->module_index, facing,
+         "ov5645", dev_name(ov5645->sd.dev));
+
+    ret = v4l2_async_register_subdev_sensor_common(&ov5645->sd);
+    if (ret) {
+        dev_err(dev, "v4l2 async register subdev failed\n");
+    }
+
+#if 0
 	ret = v4l2_async_register_subdev(&ov5645->sd);
 	if (ret < 0) {
 		dev_err(dev, "could not register v4l2 device\n");
 		goto free_entity;
 	}
+#endif
 
 	ov5645_entity_init_cfg(&ov5645->sd, NULL);
 
